@@ -1,14 +1,19 @@
 
 import { Body, Controller, Post } from '@nestjs/common';
+import { AuthService } from './auth.service';
 
 @Controller('auth')
 export class AuthController {
+  constructor(private readonly authService: AuthService) {}
+
   @Post('register')
-  register(@Body() dados: { nome: string; email: string; senha: string }) {
-    return {
-      mensagem: 'Rota de cadastro do EcoScan funcionando!',
-      nome: dados.nome,
-      email: dados.email,
-    };
+  register(
+    @Body() dados: {
+      nome: string;
+      email: string;
+      senha: string;
+    },
+  ) {
+    return this.authService.register(dados);
   }
 }
