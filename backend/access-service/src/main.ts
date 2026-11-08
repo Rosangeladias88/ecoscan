@@ -1,11 +1,13 @@
 
-import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Validação dos dados recebidos pela API
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -13,6 +15,19 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  // Configuração da documentação Swagger
+  const config = new DocumentBuilder()
+    .setTitle('EcoScan - API Access')
+    .setDescription('API de cadastro e autenticação do EcoScan')
+    .setVersion('1.0')
+    .addTag('auth')
+    .build();
+
+  const documentFactory = () =>
+    SwaggerModule.createDocument(app, config);
+
+  SwaggerModule.setup('api/docs', app, documentFactory);
 
   await app.listen(process.env.PORT ?? 3000);
 }
