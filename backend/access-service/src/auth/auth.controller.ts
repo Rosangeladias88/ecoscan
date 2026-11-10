@@ -36,5 +36,12 @@ export class AuthController {
   register(@Body() dados: RegisterDto) {
     return this.authService.register(dados);
   }
+  @Post('login')
+@ApiOperation({
+  summary: 'Realizar login do usuário',
+})
+login(@Body() dados: { email: string; senha: string }) {
+  return this.authService.login(dados);
+}
 }
 
