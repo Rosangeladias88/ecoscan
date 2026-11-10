@@ -1,4 +1,3 @@
-
 import {
   Body,
   Controller,
@@ -9,6 +8,9 @@ import {
   Post,
 } from '@nestjs/common';
 import { MaterialsService } from './materials.service';
+import { CreateMaterialDto } from './dto/create-material.dto';
+import { UpdateMaterialDto } from './dto/update-material.dto';
+import { CreateOrientationDto } from './dto/create-orientation.dto';
 
 @Controller('materials')
 export class MaterialsController {
@@ -25,26 +27,14 @@ export class MaterialsController {
   }
 
   @Post()
-  create(
-    @Body()
-    data: {
-      nome: string;
-      categoria: string;
-      reciclavel: boolean;
-    },
-  ) {
+  create(@Body() data: CreateMaterialDto) {
     return this.materialsService.create(data);
   }
 
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
-    @Body()
-    data: {
-      nome?: string;
-      categoria?: string;
-      reciclavel?: boolean;
-    },
+    @Body() data: UpdateMaterialDto,
   ) {
     return this.materialsService.update(id, data);
   }
@@ -52,5 +42,21 @@ export class MaterialsController {
   @Patch(':id/deactivate')
   deactivate(@Param('id', ParseIntPipe) id: number) {
     return this.materialsService.deactivate(id);
+  }
+
+  @Post(':id/orientation')
+  createOrientation(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() data: CreateOrientationDto,
+  ) {
+    return this.materialsService.createOrientation(id, data);
+  }
+
+  @Patch(':id/orientation')
+  updateOrientation(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() data: CreateOrientationDto,
+  ) {
+    return this.materialsService.updateOrientation(id, data);
   }
 }
