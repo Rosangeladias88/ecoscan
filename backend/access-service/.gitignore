@@ -1,0 +1,21 @@
+# Dependências
+node_modules/
+
+# Arquivos compilados
+dist/
+
+# Variáveis de ambiente
+.env
+.env.*
+!.env.example
+
+# Relatórios de testes
+coverage/
+
+# Logs
+*.log
+
+# Arquivos temporários
+*.tsbuildinfo
+
+/generated/prisma
