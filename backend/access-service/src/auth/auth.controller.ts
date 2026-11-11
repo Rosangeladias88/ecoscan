@@ -27,16 +27,22 @@ export class AuthController {
   @Post('register')
   @ApiOperation({
     summary: 'Cadastrar usuário',
-    description: 'Valida os dados e simula o cadastro de um usuário.',
+    description: 'Valida os dados e cadastra um usuário no PostgreSQL.',
   })
   @ApiCreatedResponse({
-    description: 'Dados aceitos. Cadastro simulado com sucesso.',
+    description: 'Usuário cadastrado com sucesso no banco de dados.',
     schema: {
-      example: {
-        mensagem: 'Rota de cadastro do EcoScan funcionando!',
-        nome: 'Maria Silva',
-        email: 'maria@exemplo.com',
-      },
+     
+example: {
+  message: 'Usuário cadastrado com sucesso!',
+  usuario: {
+    id: 1,
+    nome: 'Maria Silva',
+    email: 'maria@example.com',
+    criadoEm: '2026-11-10T12:00:00.000Z',
+  },
+},
+
     },
   })
   @ApiBadRequestResponse({
