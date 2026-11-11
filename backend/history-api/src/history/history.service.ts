@@ -12,11 +12,11 @@ import { CreateHistoryDto } from './dto/create-history.dto';
 export class HistoryService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: CreateHistoryDto) {
+  async create(data: CreateHistoryDto, usuarioId: number) {
     try {
       return await this.prisma.consulta.create({
         data: {
-          usuarioId: data.usuarioId,
+          usuarioId,
           materialId: data.materialId,
           fotografiaId: data.fotografiaId,
         },

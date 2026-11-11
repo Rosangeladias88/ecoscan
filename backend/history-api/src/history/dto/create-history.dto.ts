@@ -6,11 +6,6 @@ export class CreateHistoryDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  usuarioId: number;
-
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
   materialId: number;
 
   @Type(() => Number)
