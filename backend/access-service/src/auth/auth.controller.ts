@@ -1,5 +1,12 @@
 
-import { Body, Controller, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiCreatedResponse,
@@ -9,6 +16,8 @@ import {
 
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import type { Request } from 'express';
 
 @ApiTags('Autenticação')
 @Controller('auth')
@@ -43,5 +52,22 @@ export class AuthController {
 login(@Body() dados: { email: string; senha: string }) {
   return this.authService.login(dados);
 }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  getProfile(
+    @Req() request: Request & {
+      user: { sub: number; email: string };
+    },
+  ) {
+    return {
+      message: 'Usuário autenticado com sucesso!',
+      usuario: {
+        id: request.user.sub,
+        email: request.user.email,
+      },
+    };
+  }
+
 }
 
