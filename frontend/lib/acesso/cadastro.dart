@@ -5,6 +5,9 @@ import '../state/coleta_state.dart';
 import '../state/sessao.dart';
 import 'rotas.dart';
 
+import '../services/auth_service.dart';
+
+
 /// Cadastro em 2 passos:
 /// 1) a pessoa escolhe o papel: Usuário, Coletador ou Empresa;
 /// 2) preenche o formulário daquele papel e a conta é criada nele.
@@ -46,7 +49,7 @@ class _CadastroScreenState extends State<CadastroScreen> {
     }
   }
 
-  void _criar() {
+  Future<void> _criar() async {
     final coleta_ = _papel != Papel.usuario;
     if (_nome.text.trim().length < 2) {
       return toast(context, _papel == Papel.empresa ? 'Digite o nome da empresa' : 'Digite seu nome');
@@ -74,6 +77,21 @@ class _CadastroScreenState extends State<CadastroScreen> {
         ressocializacao: _ressocializacao,
       ));
     }
+    try {
+  await AuthService(
+    baseUrl: 'http://192.168.100.10:3004',
+  ).cadastrar(
+    nome: _nome.text.trim(),
+    email: email,
+    senha: _senha.text,
+  );
+} catch (erro) {
+  if (!mounted) return;
+  toast(context, 'Não foi possível criar a conta. Verifique a conexão.');
+  return;
+}
+
+if (!mounted) return;
     sessao.cadastrar(Conta(nome: _nome.text.trim(), email: email, senha: _senha.text, papel: _papel, telefone: _tel.text.trim()));
     toast(context, switch (_papel) {
       Papel.usuario => 'Conta criada! Bem-vindo ao EcoScan',

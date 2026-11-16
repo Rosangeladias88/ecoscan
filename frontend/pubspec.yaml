@@ -18,6 +18,7 @@ dependencies:
   latlong2: ^0.9.1            # coordenadas e distâncias
   url_launcher: ^6.3.1        # "Como chegar" e "Ligar"
   geolocator: ^14.0.2         # localização em tempo real nos mapas
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:
