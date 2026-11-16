@@ -13,10 +13,9 @@ export class PhotosService {
   async listar() {
     try {
       const resposta = await firstValueFrom(
-        this.httpService.get(
-          'http://localhost:3001/photos',
-          { timeout: 5000 },
-        ),
+        this.httpService.get('http://localhost:3001/photos', {
+          timeout: 5000,
+        }),
       );
 
       return resposta.data;
