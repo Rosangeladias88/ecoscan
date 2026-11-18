@@ -2,8 +2,11 @@
 import {
   Body,
   Controller,
+  Get,
+  Headers,
   Post,
 } from '@nestjs/common';
+
 import { AuthService } from './auth.service';
 
 @Controller('auth')
@@ -19,6 +22,7 @@ export class AuthController {
       nome: string;
       email: string;
       senha: string;
+      papel?: 'usuario' | 'coletador' | 'empresa';
     },
   ) {
     return this.authService.cadastrar(dados);
@@ -33,5 +37,12 @@ export class AuthController {
     },
   ) {
     return this.authService.login(dados);
+  }
+
+  @Get('me')
+  perfil(
+    @Headers('authorization') authorization?: string,
+  ) {
+    return this.authService.perfil(authorization);
   }
 }

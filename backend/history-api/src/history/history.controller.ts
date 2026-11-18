@@ -23,7 +23,11 @@ export class HistoryController {
     @Body() data: CreateHistoryDto,
     @Req() request: AuthenticatedRequest,
   ) {
-    return this.historyService.create(data, request.user.id);
+    return this.historyService.create(
+      data,
+      request.user.id,
+      request.headers.authorization,
+    );
   }
 
   @Get()

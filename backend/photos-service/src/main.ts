@@ -1,19 +1,11 @@
-
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
-import { NestExpressApplication } from '@nestjs/platform-express';
-import { join } from 'node:path';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(
-    AppModule,
-  );
+  const app = await NestFactory.create(AppModule);
 
-  app.useStaticAssets(join(process.cwd(), 'uploads'), {
-    prefix: '/uploads/',
-  });
-
-  await app.listen(process.env.PORT ?? 3001);
+  await app.listen(Number(process.env.PORT ?? 3001));
 }
 
 void bootstrap();

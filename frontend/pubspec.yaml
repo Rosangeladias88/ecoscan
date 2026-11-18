@@ -19,6 +19,7 @@ dependencies:
   url_launcher: ^6.3.1        # "Como chegar" e "Ligar"
   geolocator: ^14.0.2         # localização em tempo real nos mapas
   http: ^1.6.0
+  http_parser: ^4.1.2
 
 dev_dependencies:
   flutter_test:

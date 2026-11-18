@@ -1,6 +1,5 @@
-
 import { Type } from 'class-transformer';
-import { IsInt, Min } from 'class-validator';
+import { IsInt, IsOptional, Min } from 'class-validator';
 
 export class CreateHistoryDto {
   @Type(() => Number)
@@ -8,8 +7,9 @@ export class CreateHistoryDto {
   @Min(1)
   materialId: number;
 
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  fotografiaId: number;
+  fotografiaId?: number | null;
 }

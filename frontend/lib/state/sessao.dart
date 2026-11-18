@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'app_state.dart';
 import 'coleta_state.dart';
 
-/// Os três jeitos de usar o EcoScan, escolhidos no cadastro.
 enum Papel { usuario, coletador, empresa }
 
 extension PapelInfo on Papel {
@@ -12,16 +11,22 @@ extension PapelInfo on Papel {
         Papel.coletador => 'Coletador',
         Papel.empresa => 'Empresa',
       };
+
   String get titulo => switch (this) {
         Papel.usuario => 'Quero descartar',
         Papel.coletador => 'Faço coletas',
         Papel.empresa => 'Sou uma empresa de coleta',
       };
+
   String get descricao => switch (this) {
-        Papel.usuario => 'Recebo orientação e peço a coleta dos meus resíduos',
-        Papel.coletador => 'Busco resíduos com meu veículo e levo ao destino certo',
-        Papel.empresa => 'Cooperativa ou empresa com equipe de coleta',
+        Papel.usuario =>
+          'Recebo orientação e peço a coleta dos meus resíduos',
+        Papel.coletador =>
+          'Busco resíduos com meu veículo e levo ao destino certo',
+        Papel.empresa =>
+          'Cooperativa ou empresa com equipe de coleta',
       };
+
   IconData get icon => switch (this) {
         Papel.usuario => Icons.person_outline_rounded,
         Papel.coletador => Icons.local_shipping_outlined,
@@ -30,7 +35,16 @@ extension PapelInfo on Papel {
 }
 
 class Conta {
-  Conta({required this.nome, required this.email, required this.senha, required this.papel, this.telefone = ''});
+  Conta({
+    this.id,
+    required this.nome,
+    required this.email,
+    this.senha = '',
+    required this.papel,
+    this.telefone = '',
+  });
+
+  final int? id;
   String nome;
   String email;
   String senha;
@@ -38,55 +52,131 @@ class Conta {
   final Papel papel;
 }
 
-/// Contas e sessão (só frontend: tudo fica na memória do app).
 class Sessao extends ChangeNotifier {
-  /// Contas de demonstração (senha 123456), uma para cada papel.
   static const senhaDemo = '123456';
 
   final List<Conta> contas = [
-    Conta(nome: 'Diego Prestes', email: 'usuario@ecoscan.app', senha: senhaDemo, papel: Papel.usuario, telefone: '(91) 9 8888-0000'),
-    Conta(nome: 'João Batista', email: 'coletador@ecoscan.app', senha: senhaDemo, papel: Papel.coletador, telefone: '(91) 9 8222-3333'),
-    Conta(nome: 'Cooperativa Recicla Pará', email: 'empresa@ecoscan.app', senha: senhaDemo, papel: Papel.empresa, telefone: '(91) 3200-0000'),
+    Conta(
+      nome: 'Diego Prestes',
+      email: 'usuario@ecoscan.app',
+      senha: senhaDemo,
+      papel: Papel.usuario,
+      telefone: '(91) 9 8888-0000',
+    ),
+    Conta(
+      nome: 'João Batista',
+      email: 'coletador@ecoscan.app',
+      senha: senhaDemo,
+      papel: Papel.coletador,
+      telefone: '(91) 9 8222-3333',
+    ),
+    Conta(
+      nome: 'Cooperativa Recicla Pará',
+      email: 'empresa@ecoscan.app',
+      senha: senhaDemo,
+      papel: Papel.empresa,
+      telefone: '(91) 3200-0000',
+    ),
   ];
 
   Conta? atual;
 
-  Conta? contaDemo(Papel p) => contas.firstWhere((c) => c.papel == p && c.senha == senhaDemo);
+  String? token;
+  int? usuarioId;
 
-  /// Entra com e-mail e senha. Devolve a conta, ou null se não bater.
-  // [API acesso] mutation login(email, senha) → token + conta com papel (usuario | coletador | empresa)
-  Conta? entrar(String email, String senha) {
-    final e = email.trim().toLowerCase();
-    for (final c in contas) {
-      if (c.email.toLowerCase() == e && c.senha == senha) {
-        _abrir(c);
-        return c;
+  bool get autenticado => atual != null && token != null;
+
+  Conta? contaDemo(Papel papel) {
+    for (final conta in contas) {
+      if (conta.papel == papel && conta.senha == senhaDemo) {
+        return conta;
       }
     }
+
     return null;
   }
 
-  /// Cadastro novo: a conta já entra logada no papel escolhido.
-  // [API acesso] mutation cadastrarConta(input) → cria a conta já com o papel escolhido
-  void cadastrar(Conta c) {
-    contas.removeWhere((x) => x.email.toLowerCase() == c.email.toLowerCase());
-    contas.add(c);
-    _abrir(c);
+  Conta? entrar(String email, String senha) {
+    final emailNormalizado = email.trim().toLowerCase();
+
+    for (final conta in contas) {
+      if (conta.email.toLowerCase() == emailNormalizado &&
+          conta.senha == senha) {
+        token = null;
+        usuarioId = null;
+        _abrir(conta);
+        return conta;
+      }
+    }
+
+    return null;
   }
 
-  void _abrir(Conta c) {
-    atual = c;
-    if (c.papel == Papel.usuario) {
-      app.carregarConta(c);
+  void abrirAutenticada({
+    required Map<String, dynamic> usuario,
+    required String accessToken,
+    String telefone = '',
+  }) {
+    final papelTexto = usuario['papel']?.toString();
+
+    final papel = Papel.values.firstWhere(
+      (p) => p.name == papelTexto,
+      orElse: () => Papel.usuario,
+    );
+
+    final conta = Conta(
+      id: usuario['id'] is int
+          ? usuario['id'] as int
+          : int.tryParse(usuario['id']?.toString() ?? ''),
+      nome: usuario['nome']?.toString() ?? '',
+      email: usuario['email']?.toString() ?? '',
+      papel: papel,
+      telefone: telefone,
+    );
+
+    token = accessToken;
+    usuarioId = conta.id;
+
+    _abrir(conta);
+  }
+
+  void cadastrar(Conta conta) {
+    contas.removeWhere(
+      (x) => x.email.toLowerCase() == conta.email.toLowerCase(),
+    );
+
+    contas.add(conta);
+    token = null;
+    usuarioId = null;
+    _abrir(conta);
+  }
+
+  void _abrir(Conta conta) {
+    atual = conta;
+
+    if (conta.papel == Papel.usuario) {
+      app.carregarConta(conta);
+
+      if (autenticado) {
+        app.carregarHistoricoRemoto();
+      } else {
+        app.limparHistoricoRemoto();
+      }
     } else {
-      coleta.usarPerfil(c.email);
+      app.limparHistoricoRemoto();
+      coleta.usarPerfil(conta.email);
     }
+
     notifyListeners();
   }
 
-  // [API acesso] apagar o token salvo no aparelho (logout)
   void sair() {
     atual = null;
+    token = null;
+    usuarioId = null;
+
+    app.limparHistoricoRemoto();
+
     notifyListeners();
   }
 }

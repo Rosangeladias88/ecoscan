@@ -1,4 +1,3 @@
-
 import { Body, Controller, Get, Headers, Post } from '@nestjs/common';
 import { HistoryService } from './history.service';
 
@@ -13,15 +12,15 @@ export class HistoryController {
     return this.historyService.listar(authorization);
   }
 
-
-@Post()
-criar(
-  @Body() dados: {
-    materialId: number;
-    fotografiaId: number;
-  },
-  @Headers('authorization') authorization?: string,
-) {
-  return this.historyService.criar(dados, authorization);
-}
+  @Post()
+  criar(
+    @Body()
+    dados: {
+      materialId: number;
+      fotografiaId?: number | null;
+    },
+    @Headers('authorization') authorization?: string,
+  ) {
+    return this.historyService.criar(dados, authorization);
+  }
 }

@@ -9,6 +9,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { hash, compare } from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
+import { Papel } from '../generated/prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -17,15 +18,16 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  // CADASTRO DE USUÁRIOS
   async register(dados: {
     nome: string;
     email: string;
     senha: string;
+    papel?: Papel;
   }) {
     const nome = dados?.nome?.trim();
     const email = dados?.email?.trim().toLowerCase();
     const senha = dados?.senha;
+    const papel = dados?.papel ?? Papel.usuario;
 
     if (!nome || !email || !senha) {
       throw new BadRequestException('Preencha todos os campos.');
@@ -45,7 +47,6 @@ export class AuthService {
       throw new ConflictException('E-mail já cadastrado.');
     }
 
-    // Protege a senha antes de armazená-la.
     const senhaHash = await hash(senha, 12);
 
     try {
@@ -54,11 +55,13 @@ export class AuthService {
           nome,
           email,
           senhaHash,
+          papel,
         },
         select: {
           id: true,
           nome: true,
           email: true,
+          papel: true,
           criadoEm: true,
         },
       });
@@ -81,7 +84,6 @@ export class AuthService {
     }
   }
 
-  // LOGIN E AUTENTICAÇÃO JWT
   async login(dados: { email: string; senha: string }) {
     const email = dados?.email?.trim().toLowerCase();
     const senha = dados?.senha;
@@ -90,7 +92,6 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas.');
     }
 
-    // Procura o usuário no PostgreSQL.
     const usuario = await this.prisma.usuario.findUnique({
       where: { email },
     });
@@ -99,7 +100,6 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas.');
     }
 
-    // Confere a senha informada com o hash armazenado.
     const senhaCorreta = await compare(
       senha,
       usuario.senhaHash,
@@ -109,10 +109,10 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas.');
     }
 
-    // Gera um JWT assinado para o usuário autenticado.
     const accessToken = await this.jwtService.signAsync({
       sub: usuario.id,
       email: usuario.email,
+      papel: usuario.papel,
     });
 
     return {
@@ -123,7 +123,30 @@ export class AuthService {
         id: usuario.id,
         nome: usuario.nome,
         email: usuario.email,
+        papel: usuario.papel,
       },
+    };
+  }
+
+  async getProfile(id: number) {
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        papel: true,
+        criadoEm: true,
+      },
+    });
+
+    if (!usuario) {
+      throw new UnauthorizedException('Usuário não encontrado.');
+    }
+
+    return {
+      message: 'Usuário autenticado com sucesso!',
+      usuario,
     };
   }
 }

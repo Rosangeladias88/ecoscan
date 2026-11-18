@@ -1,10 +1,12 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-
 import 'package:ecoscan/core/core.dart';
 
 import '../data/pontos.dart';
+import '../services/history_service.dart';
+import '../services/materials_service.dart';
+import '../services/photos_service.dart';
 import 'coleta_state.dart';
 import 'sessao.dart';
 
@@ -12,6 +14,7 @@ class Consulta {
   final Residuo residuo;
   final DateTime data;
   final Uint8List? foto;
+
   Consulta(this.residuo, this.data, [this.foto]);
 }
 
@@ -29,7 +32,7 @@ class Pedido {
   final DateTime criado;
   StatusPedido status;
   String? prestador;
-  bool selo = true; // selo de ressocialização de quem aceitou
+  bool selo = true;
 
   Pedido({
     required this.id,
@@ -56,6 +59,7 @@ class ItemHistorico {
   final Pedido? pedido;
   final Residuo? residuo;
   final Uint8List? foto;
+
   ItemHistorico({
     required this.titulo,
     required this.subtitulo,
@@ -65,12 +69,15 @@ class ItemHistorico {
     this.residuo,
     this.foto,
   });
+
   bool get isColeta => pedido != null;
 }
 
-/// Estado da área do USUÁRIO (quem descarta). Só frontend, sem servidor.
-/// A área de quem coleta (coletador e empresa) fica em coleta_state.dart.
 class AppState extends ChangeNotifier {
+  final _photosService = PhotosService();
+  final _materialsService = MaterialsService();
+  final _historyService = HistoryService();
+
   String nome = 'Diego Prestes';
   String email = 'diego.prestes@email.com';
   String telefone = '(91) 9 8888-0000';
@@ -80,27 +87,41 @@ class AppState extends ChangeNotifier {
   String telefonePrestador = '(91) 3200-0000';
   Uint8List? fotoPerfil;
 
-  // Notificações (Perfil → Notificações)
   bool notifStatus = true;
   bool notifDicas = true;
   bool notifNovidades = false;
 
   final List<Consulta> consultas = [];
+  final List<Consulta> consultasRemotas = [];
   final List<Pedido> pedidos = [];
 
-  // Consulta em andamento (Passo 1 → 3)
+  final Map<int, String> _nomesMateriais = {};
+
+  bool carregandoHistoricoRemoto = false;
+  String? erroHistoricoRemoto;
+
   Uint8List? fotoAtual;
   Residuo? residuoAtual;
+
+  int? _fotoBackendId;
   bool _consultaSalva = false;
 
   int _seq = 2489;
 
   AppState() {
     final now = DateTime.now();
+
     consultas.addAll([
-      Consulta(residuoPorId('celular'), now.subtract(const Duration(days: 1))),
-      Consulta(residuoPorId('pilhas'), now.subtract(const Duration(days: 14))),
+      Consulta(
+        residuoPorId('celular'),
+        now.subtract(const Duration(days: 1)),
+      ),
+      Consulta(
+        residuoPorId('pilhas'),
+        now.subtract(const Duration(days: 14)),
+      ),
     ]);
+
     pedidos.addAll([
       Pedido(
         id: 'ECO-2471',
@@ -131,57 +152,85 @@ class AppState extends ChangeNotifier {
 
   String get primeiroNome => nome.trim().split(' ').first;
 
-  /// "Diego P."
   String get nomeCurto {
     final p = nome.trim().split(RegExp(r'\s+'));
     return p.length == 1 ? p.first : '${p.first} ${p.last[0]}.';
   }
+
   String get iniciais {
     final p = nome.trim().split(RegExp(r'\s+'));
-    if (p.length == 1) return p.first.substring(0, 1).toUpperCase();
+
+    if (p.length == 1) {
+      return p.first.substring(0, 1).toUpperCase();
+    }
+
     return (p.first[0] + p.last[0]).toUpperCase();
   }
 
-  // ---------- Conta
+  List<Consulta> get consultasExibidas =>
+      sessao.autenticado ? consultasRemotas : consultas;
+
   void carregarConta(Conta c) {
     nome = c.nome;
     email = c.email;
-    if (c.telefone.isNotEmpty) telefone = c.telefone;
+
+    if (c.telefone.isNotEmpty) {
+      telefone = c.telefone;
+    }
+
     notifyListeners();
   }
 
-  // [API acesso] mutation atualizarUsuario(input)
-  void atualizarDados({required String nome, required String email, required String telefone, required String endereco}) {
-    if (nome.trim().isNotEmpty) this.nome = nome.trim();
-    if (email.contains('@')) this.email = email.trim();
+  void atualizarDados({
+    required String nome,
+    required String email,
+    required String telefone,
+    required String endereco,
+  }) {
+    if (nome.trim().isNotEmpty) {
+      this.nome = nome.trim();
+    }
+
+    if (email.contains('@')) {
+      this.email = email.trim();
+    }
+
     this.telefone = telefone.trim();
-    if (endereco.trim().isNotEmpty) this.endereco = endereco.trim();
+
+    if (endereco.trim().isNotEmpty) {
+      this.endereco = endereco.trim();
+    }
+
     notifyListeners();
   }
 
-  // [API fotos] upload da foto de perfil → URL salva na conta
   void definirFotoPerfil(Uint8List? bytes) {
     fotoPerfil = bytes;
     notifyListeners();
   }
 
-  void definirNotificacoes({bool? status, bool? dicas, bool? novidades}) {
+  void definirNotificacoes({
+    bool? status,
+    bool? dicas,
+    bool? novidades,
+  }) {
     notifStatus = status ?? notifStatus;
     notifDicas = dicas ?? notifDicas;
     notifNovidades = novidades ?? notifNovidades;
     notifyListeners();
   }
 
-  // ---------- Consulta
   void iniciarConsulta() {
     fotoAtual = null;
     residuoAtual = null;
+    _fotoBackendId = null;
     _consultaSalva = false;
+    notifyListeners();
   }
 
-  // [API fotos] upload da foto do resíduo → fotoId usado na consulta e no pedido
   void definirFoto(Uint8List? bytes) {
     fotoAtual = bytes;
+    _fotoBackendId = null;
     notifyListeners();
   }
 
@@ -191,16 +240,219 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // [API consultas] mutation registrarConsulta(residuoId, fotoId?)
   void salvarConsulta() {
-    if (residuoAtual == null || _consultaSalva) return;
-    consultas.add(Consulta(residuoAtual!, DateTime.now(), fotoAtual));
+    if (residuoAtual == null || _consultaSalva) {
+      return;
+    }
+
+    consultas.add(
+      Consulta(residuoAtual!, DateTime.now(), fotoAtual),
+    );
+
     _consultaSalva = true;
     notifyListeners();
   }
 
-  // ---------- Coleta
-  // [API consultas] mutation solicitarColeta(input) → pedido com id e status "enviado"
+  Future<int> _obterMaterialId(Residuo residuo) async {
+    if (_nomesMateriais.isEmpty) {
+      final materiais = await _materialsService.listarMateriais();
+
+      for (final material in materiais) {
+        final id = int.tryParse(material['id']?.toString() ?? '');
+        final nome = material['nome']?.toString();
+
+        if (id != null && nome != null) {
+          _nomesMateriais[id] = nome;
+        }
+      }
+    }
+
+    final nomeLocal = _normalizar(residuo.nome);
+
+    for (final entrada in _nomesMateriais.entries) {
+      if (_normalizar(entrada.value) == nomeLocal) {
+        return entrada.key;
+      }
+    }
+
+    throw Exception(
+      'O material "${residuo.nome}" não foi encontrado na API.',
+    );
+  }
+
+  Residuo? _obterResiduoLocal(String nomeMaterial) {
+    final nomeNormalizado = _normalizar(nomeMaterial);
+
+    for (final residuo in residuos) {
+      if (_normalizar(residuo.nome) == nomeNormalizado) {
+        return residuo;
+      }
+    }
+
+    return null;
+  }
+
+  String _normalizar(String valor) {
+    return valor
+        .toLowerCase()
+        .trim()
+        .replaceAll(RegExp(r'[áàâãä]'), 'a')
+        .replaceAll(RegExp(r'[éèêë]'), 'e')
+        .replaceAll(RegExp(r'[íìîï]'), 'i')
+        .replaceAll(RegExp(r'[óòôõö]'), 'o')
+        .replaceAll(RegExp(r'[úùûü]'), 'u')
+        .replaceAll('ç', 'c');
+  }
+
+  Future<void> salvarConsultaCompleta() async {
+    if (residuoAtual == null || _consultaSalva) {
+      return;
+    }
+
+    if (!sessao.autenticado) {
+      salvarConsulta();
+      return;
+    }
+
+    if (sessao.atual?.papel != Papel.usuario) {
+      throw Exception('Esta função está disponível para contas de usuário.');
+    }
+
+    final token = sessao.token;
+
+    if (token == null || token.isEmpty) {
+      throw Exception('Sua sessão expirou. Entre novamente.');
+    }
+
+    final residuo = residuoAtual!;
+    final materialId = await _obterMaterialId(residuo);
+
+    if (fotoAtual != null && _fotoBackendId == null) {
+      final respostaFoto = await _photosService.enviarFoto(
+        fotoAtual!,
+        token: token,
+      );
+
+      _fotoBackendId = int.tryParse(
+        respostaFoto['id']?.toString() ?? '',
+      );
+
+      if (_fotoBackendId == null) {
+        throw Exception('A API não retornou o ID da foto enviada.');
+      }
+    }
+
+    final resposta = await _historyService.criarConsulta(
+      token: token,
+      materialId: materialId,
+      fotografiaId: _fotoBackendId,
+    );
+
+    final dataTexto = resposta['criadaEm']?.toString();
+
+    final data = dataTexto != null
+        ? DateTime.tryParse(dataTexto) ?? DateTime.now()
+        : DateTime.now();
+
+    consultasRemotas.insert(
+      0,
+      Consulta(residuo, data, fotoAtual),
+    );
+
+    _consultaSalva = true;
+    erroHistoricoRemoto = null;
+    notifyListeners();
+  }
+
+  Future<void> carregarHistoricoRemoto() async {
+    if (!sessao.autenticado ||
+        sessao.atual?.papel != Papel.usuario ||
+        carregandoHistoricoRemoto) {
+      return;
+    }
+
+    final token = sessao.token;
+
+    if (token == null || token.isEmpty) {
+      return;
+    }
+
+    carregandoHistoricoRemoto = true;
+    erroHistoricoRemoto = null;
+    notifyListeners();
+
+    try {
+      final materiais = await _materialsService.listarMateriais();
+
+      _nomesMateriais.clear();
+
+      for (final material in materiais) {
+        final id = int.tryParse(material['id']?.toString() ?? '');
+        final nome = material['nome']?.toString();
+
+        if (id != null && nome != null) {
+          _nomesMateriais[id] = nome;
+        }
+      }
+
+      final registros = await _historyService.listarHistorico(token);
+
+      if (sessao.token != token) {
+        return;
+      }
+
+      final novasConsultas = <Consulta>[];
+
+      for (final registro in registros) {
+        final materialId = int.tryParse(
+          registro['materialId']?.toString() ?? '',
+        );
+
+        if (materialId == null) {
+          continue;
+        }
+
+        final nomeMaterial = _nomesMateriais[materialId];
+
+        if (nomeMaterial == null) {
+          continue;
+        }
+
+        final residuo = _obterResiduoLocal(nomeMaterial);
+
+        if (residuo == null) {
+          continue;
+        }
+
+        final dataTexto = registro['criadaEm']?.toString();
+
+        final data = dataTexto != null
+            ? DateTime.tryParse(dataTexto) ?? DateTime.now()
+            : DateTime.now();
+
+        novasConsultas.add(
+          Consulta(residuo, data),
+        );
+      }
+
+      consultasRemotas
+        ..clear()
+        ..addAll(novasConsultas);
+    } catch (e) {
+      erroHistoricoRemoto = e.toString();
+    } finally {
+      carregandoHistoricoRemoto = false;
+      notifyListeners();
+    }
+  }
+
+  void limparHistoricoRemoto() {
+    consultasRemotas.clear();
+    erroHistoricoRemoto = null;
+    carregandoHistoricoRemoto = false;
+    notifyListeners();
+  }
+
   Pedido criarPedido({
     required Residuo residuo,
     required String quantidade,
@@ -209,8 +461,9 @@ class AppState extends ChangeNotifier {
     required String periodo,
     String obs = '',
   }) {
-    _consultaSalva = true; // a coleta já aparece no histórico
+    _consultaSalva = true;
     this.endereco = endereco;
+
     final p = Pedido(
       id: 'ECO-${++_seq}',
       titulo: residuo.nome,
@@ -224,40 +477,55 @@ class AppState extends ChangeNotifier {
       obs: obs,
       criado: DateTime.now(),
     );
+
     pedidos.add(p);
     notifyListeners();
-    // O pedido aparece para coletadores e empresas (mesmo app, outra conta).
-    coleta.receberDoUsuario(PedidoColeta(
-      id: p.id,
-      titulo: p.titulo,
-      icon: p.icon,
-      residuoId: residuo.id,
-      solicitante: nomeCurto,
-      tipoSolicitante: 'Usuário · ${bairro.split(',').first}',
-      telefone: telefone,
-      quantidade: quantidade,
-      endereco: endereco,
-      data: data,
-      periodo: periodo,
-      obs: obs,
-      posicao: posicaoUsuario,
-      criado: p.criado,
-    ));
+
+    coleta.receberDoUsuario(
+      PedidoColeta(
+        id: p.id,
+        titulo: p.titulo,
+        icon: p.icon,
+        residuoId: residuo.id,
+        solicitante: nomeCurto,
+        tipoSolicitante: 'Usuário · ${bairro.split(',').first}',
+        telefone: telefone,
+        quantidade: quantidade,
+        endereco: endereco,
+        data: data,
+        periodo: periodo,
+        obs: obs,
+        posicao: posicaoUsuario,
+        criado: p.criado,
+      ),
+    );
+
     return p;
   }
 
   Pedido? pedidoPorId(String id) {
     for (final p in pedidos) {
-      if (p.id == id) return p;
+      if (p.id == id) {
+        return p;
+      }
     }
+
     return null;
   }
 
-  /// Quem coleta aceitou ou concluiu um pedido deste usuário.
-  // [API consultas] com backend: query pedido(id) / subscription statusDoPedido(id)
-  void atualizarPedidoDoUsuario(String id, StatusPedido status, String quem, String telefone, bool selo) {
+  void atualizarPedidoDoUsuario(
+    String id,
+    StatusPedido status,
+    String quem,
+    String telefone,
+    bool selo,
+  ) {
     final p = pedidoPorId(id);
-    if (p == null) return;
+
+    if (p == null) {
+      return;
+    }
+
     p.status = status;
     p.prestador = quem;
     p.selo = selo;
@@ -265,11 +533,9 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ---------- Histórico (só do usuário)
-  // [API histórico] query historico(usuarioId) → consultas + coletas
   List<ItemHistorico> get historico {
     final itens = <ItemHistorico>[
-      for (final c in consultas)
+      for (final c in consultasExibidas)
         ItemHistorico(
           titulo: c.residuo.nome,
           subtitulo: 'Consulta · ${dataCurta(c.data)}',
@@ -289,18 +555,30 @@ class AppState extends ChangeNotifier {
           foto: p.foto,
         ),
     ];
+
     itens.sort((a, b) => b.data.compareTo(a.data));
     return itens;
   }
 
   int get totalColetas => pedidos.length;
 
-  /// Descartes do usuário no período (0 semana · 1 mês · 2 geral) — usado no Hall da Fama.
   int descartesNoPeriodo(int periodo) {
-    final dias = switch (periodo) { 0 => 7, 1 => 30, _ => 100000 };
+    final dias = switch (periodo) {
+      0 => 7,
+      1 => 30,
+      _ => 100000,
+    };
+
     final limite = DateTime.now().subtract(Duration(days: dias));
-    final c = consultas.where((x) => x.data.isAfter(limite)).length;
-    final p = pedidos.where((x) => x.criado.isAfter(limite)).length;
+
+    final c = consultasExibidas
+        .where((x) => x.data.isAfter(limite))
+        .length;
+
+    final p = pedidos
+        .where((x) => x.criado.isAfter(limite))
+        .length;
+
     return c + p;
   }
 }

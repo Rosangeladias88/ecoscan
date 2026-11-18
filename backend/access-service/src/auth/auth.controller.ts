@@ -7,6 +7,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+
 import {
   ApiBadRequestResponse,
   ApiCreatedResponse,
@@ -27,53 +28,37 @@ export class AuthController {
   @Post('register')
   @ApiOperation({
     summary: 'Cadastrar usuário',
-    description: 'Valida os dados e cadastra um usuário no PostgreSQL.',
+    description: 'Cadastra um usuário com seu respectivo perfil.',
   })
   @ApiCreatedResponse({
-    description: 'Usuário cadastrado com sucesso no banco de dados.',
-    schema: {
-     
-example: {
-  message: 'Usuário cadastrado com sucesso!',
-  usuario: {
-    id: 1,
-    nome: 'Maria Silva',
-    email: 'maria@example.com',
-    criadoEm: '2026-11-10T12:00:00.000Z',
-  },
-},
-
-    },
+    description: 'Usuário cadastrado com sucesso.',
   })
   @ApiBadRequestResponse({
-    description: 'Dados inválidos: nome, e-mail ou senha.',
+    description: 'Dados inválidos.',
   })
   register(@Body() dados: RegisterDto) {
     return this.authService.register(dados);
   }
+
   @Post('login')
-@ApiOperation({
-  summary: 'Realizar login do usuário',
-})
-login(@Body() dados: { email: string; senha: string }) {
-  return this.authService.login(dados);
-}
+  @ApiOperation({
+    summary: 'Realizar login do usuário',
+  })
+  login(@Body() dados: { email: string; senha: string }) {
+    return this.authService.login(dados);
+  }
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
   getProfile(
-    @Req() request: Request & {
-      user: { sub: number; email: string };
+    @Req()
+    request: Request & {
+      user: {
+        sub: number;
+        email: string;
+      };
     },
   ) {
-    return {
-      message: 'Usuário autenticado com sucesso!',
-      usuario: {
-        id: request.user.sub,
-        email: request.user.email,
-      },
-    };
+    return this.authService.getProfile(request.user.sub);
   }
-
 }
-

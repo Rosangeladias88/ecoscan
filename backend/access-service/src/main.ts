@@ -1,3 +1,4 @@
+import 'dotenv/config';
 
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
@@ -7,7 +8,6 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Validação dos dados recebidos pela API
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -16,7 +16,6 @@ async function bootstrap() {
     }),
   );
 
-  // Configuração da documentação Swagger
   const config = new DocumentBuilder()
     .setTitle('EcoScan - API Access')
     .setDescription('API de cadastro e autenticação do EcoScan')

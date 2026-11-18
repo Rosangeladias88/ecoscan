@@ -1,21 +1,26 @@
-
 import {
+  BadRequestException,
   Controller,
   Get,
-  Post,
   Param,
+  ParseIntPipe,
+  Post,
+  Req,
+  Res,
+  StreamableFile,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
-  BadRequestException,
 } from '@nestjs/common';
-
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import type { Response } from 'express';
+import { memoryStorage } from 'multer';
 import { PhotosService } from './photos.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../auth/authenticated-request';
 
 @Controller('photos')
+@UseGuards(JwtAuthGuard)
 export class PhotosController {
   constructor(
     private readonly photosService: PhotosService,
@@ -24,53 +29,61 @@ export class PhotosController {
   @Post()
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads',
-        filename: (_req, file, callback) => {
-          const nome = randomUUID() + extname(file.originalname);
-          callback(null, nome);
-        },
-      }),
+      storage: memoryStorage(),
       limits: {
         fileSize: 5 * 1024 * 1024,
       },
-      fileFilter: (_req, file, callback) => {
-        const permitidos = [
-          'image/jpeg',
-          'image/png',
-          'image/webp',
-        ];
-
-        if (!permitidos.includes(file.mimetype)) {
-          return callback(
-            new BadRequestException(
-              'Envie uma imagem JPG, PNG ou WEBP.',
-            ),
-            false,
-          );
-        }
-
-        callback(null, true);
-      },
     }),
   )
-  upload(@UploadedFile() file: Express.Multer.File) {
-    if (!file) {
+  enviar(
+    @UploadedFile() arquivo: Express.Multer.File | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    if (!arquivo) {
       throw new BadRequestException(
         'Nenhuma fotografia enviada.',
       );
     }
 
-    return this.photosService.criar(file.filename);
+    return this.photosService.enviar(
+      arquivo,
+      request.user.id,
+    );
   }
 
   @Get()
-  listar() {
-    return this.photosService.listar();
+  listar(@Req() request: AuthenticatedRequest) {
+    return this.photosService.listar(request.user.id);
+  }
+
+  @Get(':id/file')
+  async buscarArquivo(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const arquivo = await this.photosService.buscarArquivo(
+      id,
+      request.user.id,
+    );
+
+    response.setHeader('Content-Type', arquivo.contentType);
+    response.setHeader(
+      'Content-Disposition',
+      `inline; filename="${arquivo.nomeArquivo}"`,
+    );
+
+    return new StreamableFile(arquivo.buffer);
   }
 
   @Get(':id')
-  buscarPorId(@Param('id') id: string) {
-    return this.photosService.buscarPorId(id);
+  buscarPorId(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.photosService.buscarPorId(
+      id,
+      request.user.id,
+    );
   }
 }
