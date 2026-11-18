@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class HistoryService {
-  HistoryService({this.baseUrl = 'http://192.168.0.29:3004'});
+  HistoryService({this.baseUrl = 'http://localhost:3004'});
 
   final String baseUrl;
 

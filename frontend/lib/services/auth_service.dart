@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 
 class AuthService {
   AuthService({
-    this.baseUrl = 'http://192.168.0.29:3004',
+    this.baseUrl = 'http://localhost:3004',
   });
 
   final String baseUrl;

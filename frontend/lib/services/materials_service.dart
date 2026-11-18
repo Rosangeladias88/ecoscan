@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class MaterialsService {
-  MaterialsService({this.baseUrl = 'http://192.168.0.29:3004'});
+  MaterialsService({this.baseUrl = 'http://localhost:3004'});
 
   final String baseUrl;
 

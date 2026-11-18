@@ -1,5 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
+﻿import { Test, TestingModule } from '@nestjs/testing';
 import { PhotosController } from './photos.controller';
+import { PhotosService } from './photos.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 describe('PhotosController', () => {
   let controller: PhotosController;
@@ -7,7 +9,23 @@ describe('PhotosController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PhotosController],
-    }).compile();
+      providers: [
+        {
+          provide: PhotosService,
+          useValue: {
+            enviar: jest.fn(),
+            listar: jest.fn(),
+            buscarPorId: jest.fn(),
+            buscarArquivo: jest.fn(),
+          },
+        },
+      ],
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({
+        canActivate: jest.fn().mockResolvedValue(true),
+      })
+      .compile();
 
     controller = module.get<PhotosController>(PhotosController);
   });

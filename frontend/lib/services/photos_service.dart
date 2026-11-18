@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
 class PhotosService {
-  PhotosService({this.baseUrl = 'http://192.168.0.29:3004'});
+  PhotosService({this.baseUrl = 'http://localhost:3004'});
 
   final String baseUrl;
 
