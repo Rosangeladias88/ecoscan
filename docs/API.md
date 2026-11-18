@@ -1,150 +1,251 @@
+﻿# Documentação das APIs - EcoScan
 
-# Documentação das APIs — EcoScan
+Este documento descreve as rotas identificadas na implementação atual do backend.
 
-## 1. Visão geral
+## 1. Endereços locais
 
-O EcoScan utiliza uma arquitetura de microsserviços, composta por quatro APIs REST e uma API GraphQL.
+| Serviço | Endereço |
+|---|---|
+| Access | http://localhost:3000 |
+| Photos | http://localhost:3001 |
+| Materials | http://localhost:3002 |
+| History | http://localhost:3003 |
+| API Gateway | http://localhost:3004 |
+| GraphQL | http://localhost:3005 |
 
-Os serviços possuem responsabilidades específicas e se comunicam por HTTP.
+As rotas do Gateway são utilizadas como ponto de entrada pelo cliente.
 
-O API Gateway centraliza o acesso dos clientes aos serviços.
+## 2. Autenticação
 
-**Observação:** os endpoints descritos neste documento foram definidos na proposta de arquitetura. A implementação e os formatos de resposta devem ser conferidos no código-fonte.
+As rotas protegidas utilizam JWT.
 
-## 2. API de Acesso
+Envie o token no cabeçalho:
 
-Responsável pelo cadastro, autenticação e gerenciamento de acesso dos usuários.
+```http
+Authorization: Bearer SEU_TOKEN
+```
 
-### POST /auth/register
+## 3. Access Service
 
-Realiza o cadastro de um novo usuário.
+Base URL: `http://localhost:3000`
 
-Responsabilidades:
-- Receber os dados de cadastro.
-- Validar as informações.
-- Armazenar a senha de maneira segura.
-- Registrar o usuário no banco de dados.
+### Cadastro
 
-### POST /auth/login
+`POST /auth/register`
 
-Autentica um usuário cadastrado.
+Exemplo de corpo:
 
-Responsabilidades:
-- Validar as credenciais.
-- Verificar a senha cadastrada.
-- Gerar um token JWT após autenticação.
+```json
+{
+  "nome": "Usuário",
+  "email": "usuario@email.com",
+  "senha": "senha123",
+  "papel": "usuario"
+}
+```
 
-O JWT permite identificar o usuário nas requisições protegidas.
+Campos:
+- `nome`: obrigatório.
+- `email`: obrigatório e deve ser válido.
+- `senha`: obrigatória, mínimo de 8 caracteres.
+- `papel`: opcional.
 
-## 3. API de Fotografias
+Os papéis conhecidos na tipagem do Gateway são `usuario`, `coletador` e `empresa`.
 
-Responsável pelo recebimento e armazenamento das imagens dos resíduos.
+### Login
 
-### POST /photos
+`POST /auth/login`
 
-Recebe uma fotografia enviada pelo usuário autenticado.
+```json
+{
+  "email": "usuario@email.com",
+  "senha": "senha123"
+}
+```
 
-Responsabilidades:
-- Receber o arquivo.
-- Validar o tipo e o tamanho da imagem.
-- Armazenar a fotografia.
-- Gerar um identificador para o arquivo.
+### Perfil autenticado
 
-### GET /photos/:id
+`GET /auth/me`
 
-Permite consultar uma fotografia utilizando seu identificador.
+Requer JWT.
 
-O parâmetro `:id` representa o identificador da fotografia.
+## 4. Photos Service
 
-## 4. API de Materiais
+Base URL: `http://localhost:3001`
 
-Responsável pelo catálogo de materiais e pelas orientações de descarte.
+As rotas abaixo exigem autenticação JWT.
 
-### GET /materials
+### Enviar fotografia
 
-Consulta os materiais cadastrados no sistema.
+`POST /photos`
 
-### POST /materials
+Tipo de conteúdo: `multipart/form-data`.
 
-Permite cadastrar novos materiais.
+Campo:
+- `file`: arquivo da fotografia.
 
-Na arquitetura proposta, a escrita no catálogo é restrita a usuários administradores.
+Limite de tamanho: 5 MB.
 
-Informações previstas:
-- Nome do material.
-- Categoria.
-- Reciclabilidade.
-- Orientações de preparo.
-- Destino recomendado.
+### Listar fotografias
 
-## 5. API de Histórico
+`GET /photos`
 
-Responsável por registrar e consultar as atividades dos usuários.
+Retorna as fotografias associadas ao usuário autenticado.
 
-### POST /history
+### Consultar metadados
 
-Registra uma consulta realizada pelo usuário.
+`GET /photos/:id`
 
-### GET /history?limit=10
+Consulta uma fotografia pelo identificador, respeitando a propriedade do usuário.
 
-Consulta o histórico do usuário autenticado.
+### Recuperar arquivo
 
-O parâmetro `limit` controla a quantidade solicitada de registros.
+`GET /photos/:id/file`
 
-O histórico deve ser acessível somente ao proprietário dos dados.
+Retorna o arquivo da fotografia.
 
-## 6. API GraphQL
+## 5. Materials API
 
-### POST /graphql
+Base URL: `http://localhost:3002`
 
-Permite realizar consultas combinadas aos dados de diferentes serviços.
+### Listar materiais
 
-Na arquitetura proposta, o GraphQL consulta as APIs de:
+`GET /materials`
 
-- Materiais.
-- Histórico.
-- Fotografias.
+### Consultar material
 
-O serviço GraphQL não possui banco de dados próprio.
+`GET /materials/:id`
 
-Sua responsabilidade é agregar informações recebidas das APIs REST.
+### Cadastrar material
 
-## 7. Autenticação e segurança
+`POST /materials`
 
-O sistema prevê:
+```json
+{
+  "nome": "Garrafa PET",
+  "categoria": "Plástico",
+  "reciclavel": true
+}
+```
 
-- Hash de senhas.
-- Tokens JWT.
-- Proteção das rotas privadas.
-- Controle de acesso às informações dos usuários.
-- Validação de dados e arquivos.
-- Restrições para operações administrativas.
+### Atualizar material
 
-## 8. Comunicação entre serviços
+`PATCH /materials/:id`
 
-Fluxo arquitetural previsto:
+Aceita os campos de cadastro de forma opcional.
 
-1. O aplicativo envia uma requisição.
-2. O API Gateway recebe a solicitação.
-3. O Gateway encaminha a requisição ao serviço responsável.
-4. O serviço processa a operação.
-5. A resposta retorna ao cliente.
+### Desativar material
 
-O GraphQL pode reunir dados de diferentes serviços por HTTP.
+`PATCH /materials/:id/deactivate`
 
-## 9. Estado da implementação
+### Cadastrar orientação
 
-Este documento descreve os contratos propostos para o EcoScan.
+`POST /materials/:id/orientation`
 
-Antes da entrega final, a equipe deverá conferir:
+```json
+{
+  "preparo": "Lavar e retirar os resíduos.",
+  "destino": "Encaminhar para a coleta seletiva."
+}
+```
 
-- Rotas realmente implementadas.
-- Métodos HTTP utilizados.
-- Campos obrigatórios das requisições.
-- Formatos reais das respostas.
-- Códigos de status e erros.
-- Regras de autenticação.
-- Integrações concluídas.
-- Testes executados e seus resultados.
+### Atualizar orientação
 
-Documentar uma rota planejada não significa que ela já esteja implementada.
+`PATCH /materials/:id/orientation`
+
+Aceita os campos `preparo` e `destino` de forma opcional.
+
+## 6. History API
+
+Base URL: `http://localhost:3003`
+
+As rotas exigem autenticação JWT.
+
+### Criar registro
+
+`POST /history`
+
+```json
+{
+  "materialId": 1,
+  "fotografiaId": 1
+}
+```
+
+O campo `fotografiaId` é opcional e pode ser nulo.
+
+O usuário é identificado pelo token, não pelo corpo da requisição.
+
+### Listar histórico
+
+`GET /history`
+
+Retorna os registros do usuário autenticado.
+
+### Consultar registro
+
+`GET /history/:id`
+
+Consulta um registro pertencente ao usuário autenticado.
+
+## 7. API Gateway
+
+Base URL: `http://localhost:3004`
+
+O Gateway encaminha as requisições para os serviços correspondentes.
+
+| Método | Rota | Serviço de destino |
+|---|---|---|
+| POST | `/auth/register` | Access |
+| POST | `/auth/login` | Access |
+| GET | `/auth/me` | Access |
+| GET | `/materials` | Materials |
+| POST | `/photos` | Photos |
+| GET | `/photos` | Photos |
+| GET | `/photos/:id` | Photos |
+| GET | `/photos/:id/file` | Photos |
+| POST | `/history` | History |
+| GET | `/history` | History |
+
+As rotas que exigem autenticação devem receber o cabeçalho Authorization.
+
+Observação: o Gateway disponibiliza atualmente a listagem de materiais. As operações administrativas de cadastro, atualização e desativação estão documentadas na Materials API, mas não devem ser consideradas rotas do Gateway.
+
+## 8. GraphQL Service
+
+Base URL: `http://localhost:3005`
+
+Endpoint:
+
+`POST /graphql`
+
+A interface GraphiQL está habilitada na configuração atual.
+
+### Consulta de materiais
+
+```graphql
+query {
+  materiais
+}
+```
+
+A consulta retorna uma lista de nomes:
+
+```json
+{
+  "data": {
+    "materiais": [
+      "Garrafa PET"
+    ]
+  }
+}
+```
+
+A lista acima é apenas um exemplo ilustrativo. Os resultados dependem dos dados cadastrados na Materials API.
+
+## 9. Observações
+
+- Os exemplos de corpos representam os DTOs identificados no código.
+- Os formatos completos das respostas dependem da implementação dos respectivos serviços.
+- Os identificadores devem corresponder a registros existentes.
+- As rotas devem ser testadas no ambiente local antes de serem utilizadas em produção.

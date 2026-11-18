@@ -1,114 +1,170 @@
-
-# Arquitetura do EcoScan
+﻿# Arquitetura do EcoScan
 
 ## 1. Visão geral
 
-O EcoScan é uma aplicação voltada à educação ambiental e à orientação sobre o descarte correto de resíduos.
+O EcoScan utiliza uma arquitetura organizada em serviços backend independentes, com comunicação HTTP entre os componentes.
 
-O sistema permite que usuários enviem fotografias, selecionem manualmente o tipo de material e consultem orientações sobre preparo, reciclagem e destino adequado.
+O sistema possui um frontend Flutter, um API Gateway, serviços especializados, uma API GraphQL e um banco de dados PostgreSQL.
 
-O projeto utiliza uma arquitetura baseada em microsserviços, separando as funcionalidades em serviços com responsabilidades específicas.
+## 2. Componentes
 
-## 2. Tecnologias
+| Componente | Responsabilidade | Porta padrão |
+|---|---|---:|
+| Access Service | Cadastro, login e perfil do usuário | 3000 |
+| Photos Service | Envio, armazenamento e consulta de fotografias | 3001 |
+| Materials API | Gerenciamento de materiais e orientações | 3002 |
+| History API | Registro e consulta do histórico | 3003 |
+| API Gateway | Encaminhamento das requisições do cliente | 3004 |
+| GraphQL Service | Disponibilização de consultas GraphQL | 3005 |
+| PostgreSQL | Persistência dos dados | 5432 |
 
-| Tecnologia | Finalidade |
-|---|---|
-| Flutter e Dart | Aplicativo móvel |
-| React e TypeScript | Painel administrativo |
-| NestJS e TypeScript | Backend e API Gateway |
-| PostgreSQL | Armazenamento de dados |
-| Prisma ORM | Acesso ao banco de dados |
-| REST | Comunicação por endpoints HTTP |
-| GraphQL | Consultas combinadas |
-| JWT | Autenticação e autorização |
-| Git e GitHub | Versionamento e colaboração |
-| Docker Compose | Organização do ambiente local |
+## 3. Organização do backend
 
-## 3. Organização dos microsserviços
+### Access Service
 
-### API de Acesso
-Responsável pelo cadastro, login e autenticação dos usuários.
+Responsável pela autenticação e pelo gerenciamento de acesso dos usuários.
 
-Rotas previstas:
-- POST /auth/register
-- POST /auth/login
+Principais funcionalidades:
+- Cadastro de usuários.
+- Login.
+- Emissão e validação de JWT.
+- Consulta do perfil autenticado.
 
-### API de Fotografias
-Responsável pelo recebimento e armazenamento das fotografias enviadas pelos usuários.
+### Photos Service
 
-Rotas previstas:
-- POST /photos
-- GET /photos/:id
+Responsável pelo armazenamento e pela recuperação das fotografias.
 
-### API de Materiais
-Responsável pelo catálogo de materiais e pelas orientações sobre descarte.
+Principais funcionalidades:
+- Recebimento de imagens.
+- Listagem das fotografias do usuário autenticado.
+- Consulta de metadados.
+- Recuperação do arquivo armazenado.
+- Verificação de propriedade da fotografia.
 
-Rotas previstas:
-- GET /materials
-- POST /materials
+### Materials API
 
-### API de Histórico
-Responsável pelo registro e pela consulta das atividades de cada usuário.
+Responsável pelo gerenciamento dos materiais recicláveis.
 
-Rotas previstas:
-- POST /history
-- GET /history?limit=10
+Principais funcionalidades:
+- Listagem e consulta de materiais.
+- Cadastro e atualização.
+- Desativação de materiais.
+- Cadastro e atualização de orientações de descarte.
 
-### API GraphQL
-Responsável por combinar informações das APIs de Materiais, Histórico e Fotografias.
+### History API
 
-Endpoint previsto:
-- POST /graphql
+Responsável pelo histórico de consultas realizadas pelos usuários.
 
-## 4. API Gateway
+Principais funcionalidades:
+- Criação de registros.
+- Listagem do histórico do usuário autenticado.
+- Consulta individual de registros.
+- Associação entre usuário, material e fotografia.
 
-O API Gateway funciona como ponto central de entrada das requisições.
+### API Gateway
 
-Sua responsabilidade é encaminhar as solicitações dos clientes aos serviços apropriados.
+O Gateway centraliza as rotas utilizadas pelo cliente e encaminha as requisições aos serviços correspondentes.
 
-O Gateway não é considerado uma sexta API de negócio.
+Atualmente, possui módulos de:
+- Autenticação.
+- Materiais.
+- Fotografias.
+- Histórico.
 
-## 5. Banco de dados
+O Gateway encaminha o cabeçalho Authorization quando necessário, permitindo que os serviços responsáveis validem o token JWT.
 
-A arquitetura prevê quatro bancos lógicos:
+### GraphQL Service
 
-- acesso_db
-- fotos_db
-- materiais_db
-- historico_db
+Disponibiliza uma interface GraphQL para consultas de materiais.
 
-Cada serviço é responsável por seus próprios dados.
+A consulta `materiais` realiza uma requisição HTTP para a Materials API e retorna somente os nomes dos materiais.
 
-A API GraphQL não possui banco próprio e consulta informações dos demais serviços por HTTP.
+## 4. Comunicação entre os componentes
 
-## 6. Segurança
+```text
+                  FRONTEND FLUTTER
+                         |
+                         v
+                   API GATEWAY
+                    Porta 3004
+                         |
+       +-----------------+------------------+
+       |                 |                  |
+       v                 v                  v
+  ACCESS SERVICE    MATERIALS API      PHOTOS SERVICE
+     :3000              :3002               :3001
+       |
+       |
+       +-------------------+
+                           |
+                           v
+                      HISTORY API
+                         :3003
 
-A arquitetura prevê:
 
-- Armazenamento de senhas com hash.
-- Autenticação por JWT.
-- Proteção das rotas privadas.
-- Histórico acessível somente ao usuário proprietário.
-- Operações administrativas restritas a usuários autorizados.
-- Validação dos arquivos enviados.
+                  GRAPHQL SERVICE
+                       :3005
+                         |
+                         v
+                    MATERIALS API
+                       :3002
 
-## 7. Fluxo principal
 
-1. O usuário realiza cadastro ou login.
-2. Envia uma fotografia do resíduo.
-3. Seleciona manualmente o material.
-4. Consulta as orientações de preparo e descarte.
-5. Salva a consulta no histórico.
-6. Pode consultar seus registros posteriormente.
+              SERVIÇOS E POSTGRESQL
+                       :5432
+```
 
-## 8. Limitações e evolução
+O diagrama apresenta os principais caminhos de comunicação. Cada serviço utiliza sua configuração própria de conexão com o banco de dados.
 
-O MVP utiliza seleção manual do material.
+## 5. Autenticação e segurança
 
-Reconhecimento automático por inteligência artificial, geolocalização e integração com serviços de coleta são possibilidades futuras, não funcionalidades confirmadas na versão inicial.
+A autenticação utiliza JSON Web Token (JWT).
 
-## 9. Estado da implementação
+O cliente envia o token no cabeçalho:
 
-A arquitetura descrita representa a estrutura planejada do sistema.
+```http
+Authorization: Bearer TOKEN
+```
 
-O estado de implementação de cada API, suas integrações e seus testes deve ser registrado separadamente e validado com o código do repositório.
+Os serviços que exigem autenticação validam o token antes de executar operações protegidas.
+
+No serviço de fotografias, também existe verificação de propriedade para impedir que um usuário consulte arquivos pertencentes a outro usuário.
+
+O envio de fotografias utiliza multipart/form-data, com limite de 5 MB.
+
+## 6. Banco de dados
+
+O PostgreSQL é iniciado pelo Docker Compose localizado na raiz do repositório.
+
+O container utiliza:
+- Imagem: `postgres:17-alpine`
+- Nome: `ecoscan-postgres`
+- Porta: `5432`
+- Volume persistente: `ecoscan_postgres_data`
+
+O volume mantém os dados do banco entre reinicializações do container.
+
+As configurações de conexão são definidas nos arquivos de ambiente de cada serviço.
+
+## 7. Frontend
+
+O frontend é desenvolvido com Flutter e Dart.
+
+Entre as dependências utilizadas estão:
+- http
+- image_picker
+- camera
+- permission_handler
+- flutter_map
+- geolocator
+- url_launcher
+
+A aplicação se comunica com o backend por meio do API Gateway e dos serviços disponibilizados.
+
+## 8. Observações arquiteturais
+
+- O Docker Compose da raiz inicia o banco de dados, não todos os serviços NestJS.
+- O Gateway utiliza endereços HTTP locais para encaminhar as requisições.
+- O GraphQL consulta a Materials API diretamente.
+- A configuração atual do GraphQL disponibiliza GraphiQL e não habilita o Playground.
+- A integração completa do frontend deve ser considerada concluída somente após os testes ponta a ponta.
