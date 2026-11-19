@@ -10,22 +10,81 @@ O EcoScan permite consultar materiais, visualizar orientações de descarte, reg
 - **Frontend:** Flutter e Dart.
 - **Infraestrutura:** Docker e Docker Compose.
 
-## Estrutura
+## Estrutura do projeto
 
 ```text
 ecoscan/
+├── .github/
 ├── backend/
 │   ├── access-service/
-│   ├── photos-service/
-│   ├── materials-api/
-│   ├── history-api/
+│   │   ├── prisma/
+│   │   ├── src/
+│   │   │   ├── auth/
+│   │   │   ├── generated/
+│   │   │   └── prisma/
+│   │   └── test/
 │   ├── api-gateway/
-│   └── graphql-service/
-├── frontend/
+│   │   ├── src/
+│   │   │   ├── auth/
+│   │   │   ├── history/
+│   │   │   ├── materials/
+│   │   │   └── photos/
+│   │   └── test/
+│   ├── graphql-service/
+│   │   ├── src/
+│   │   │   └── materiais/
+│   │   └── test/
+│   ├── history-api/
+│   │   ├── prisma/
+│   │   ├── src/
+│   │   │   ├── auth/
+│   │   │   ├── history/
+│   │   │   └── prisma/
+│   │   └── test/
+│   ├── materials-api/
+│   │   ├── prisma/
+│   │   ├── src/
+│   │   │   ├── auth/
+│   │   │   ├── materials/
+│   │   │   └── prisma/
+│   │   └── test/
+│   └── photos-service/
+│       ├── prisma/
+│       ├── src/
+│       │   ├── auth/
+│       │   ├── photos/
+│       │   └── prisma/
+│       └── test/
 ├── docs/
+│   ├── API.md
+│   ├── ARQUITETURA.md
+│   ├── README.md
+│   ├── STATUS.md
+│   └── STATUS_DESENVOLVIMENTO.md
+├── frontend/
+│   ├── android/
+│   ├── assets/
+│   ├── lib/
+│   │   ├── acesso/
+│   │   ├── coleta/
+│   │   ├── core/
+│   │   │   ├── data/
+│   │   │   └── widgets/
+│   │   ├── data/
+│   │   ├── services/
+│   │   ├── state/
+│   │   └── usuario/
+│   ├── qrcode/
+│   ├── test/
+│   ├── tool/
+│   └── web/
+├── .env.example
+├── .gitignore
 ├── docker-compose.yml
 └── README.md
 ```
+
+*Pastas geradas automaticamente, como `node_modules`, `dist`, `build` e `.dart_tool`, foram omitidas.*
 
 ## Arquitetura e portas
 
@@ -63,8 +122,10 @@ flutter --version
 
 ## 1. Clonar o repositório
 
+Clone a branch principal (`main`):
+
 ```powershell
-git clone -b integracao-ecoscan https://github.com/Rosangeladias88/ecoscan.git
+git clone https://github.com/Rosangeladias88/ecoscan.git
 cd ecoscan
 ```
 
