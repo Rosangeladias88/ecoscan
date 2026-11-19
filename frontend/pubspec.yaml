@@ -1,0 +1,41 @@
+name: ecoscan
+description: EcoScan - um app para quem descarta (usuário) e para quem coleta (coletador e empresa).
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  google_fonts: ^6.2.1        # fonte Plus Jakarta Sans
+  image_picker: ^1.1.2        # galeria e foto de perfil
+  camera: ^0.11.0+2           # câmera ao vivo (usuário)
+  permission_handler: ^11.3.1 # pedido de permissão da câmera
+  flutter_map: ^7.0.2         # mapas (OpenStreetMap, sem chave de API)
+  latlong2: ^0.9.1            # coordenadas e distâncias
+  url_launcher: ^6.3.1        # "Como chegar" e "Ligar"
+  geolocator: ^14.0.2         # localização em tempo real nos mapas
+  http: ^1.6.0
+  http_parser: ^4.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_launcher_icons: ^0.14.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/logo/
+
+# Ícone do app no celular: rode `dart run flutter_launcher_icons`
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/icon/icon.png
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: assets/icon/icon_foreground.png
+  min_sdk_android: 21

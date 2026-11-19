@@ -1,0 +1,25 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Material {
+  id         Int         @id @default(autoincrement())
+  nome       String
+  categoria  String
+  reciclavel Boolean
+  ativo      Boolean     @default(true)
+  orientacao Orientacao?
+}
+
+model Orientacao {
+  id         Int      @id @default(autoincrement())
+  materialId Int      @unique
+  preparo    String
+  destino    String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+}

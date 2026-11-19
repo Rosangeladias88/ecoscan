@@ -1,0 +1,19 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+model Consulta {
+  id           Int      @id @default(autoincrement())
+  usuarioId    Int      @map("usuario_id")
+  materialId   Int      @map("material_id")
+  fotografiaId Int?     @unique @map("fotografia_id")
+  criadaEm     DateTime @default(now()) @map("criada_em")
+
+  @@map("consultas")
+}

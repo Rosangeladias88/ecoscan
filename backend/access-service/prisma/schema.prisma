@@ -1,0 +1,26 @@
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Papel {
+  usuario
+  coletador
+  empresa
+}
+
+model Usuario {
+  id           Int      @id @default(autoincrement())
+  nome         String
+  email        String   @unique
+  senhaHash    String
+  papel        Papel    @default(usuario)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
